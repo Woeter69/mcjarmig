@@ -1,8 +1,11 @@
 package main
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -33,4 +36,19 @@ func parseFlags() *Config {
 	flag.IntVar(&cfg.Workers, "workers", 5, "Number of concurrent workers")
 	flag.Parse()
 	return cfg
+}
+
+func calculateSHA1(filePath string) (string, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	hasher := sha1.New()
+	if _, err := io.Copy(hasher, f); err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
