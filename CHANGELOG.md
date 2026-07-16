@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.0-alpha] - 2026-07-15
+## [0.1.0-alpha] - 2026-07-16
 
 ### Added
-- Project initialization and basic structure.
+- Hashing utilities and Modrinth API integration structures.
