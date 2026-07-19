@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - **Project Initialization**: Initialized Go module `modmigrator` (`go.mod`) with Go 1.26 compatibility.
+- **Documentation (`README.md`)**: Added comprehensive project README detailing features, cross-platform paths, CLI flags, usage examples, and architecture.
 - **Core CLI Architecture (`main.go`)**:
   - Implemented command-line flag parsing (`-dir`, `-version`, `-loader`, `-workers`) using standard `flag` package.
   - Added concurrent worker pool pattern using `chan ModJob` and `sync.WaitGroup` to process mod `.jar` files in parallel.
