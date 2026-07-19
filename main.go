@@ -308,7 +308,7 @@ func processMod(job ModJob, results chan<- ModResult, cfg *Config, client *http.
 	// we avoid moving it onto itself.
 	if targetFile.Filename == job.Filename {
 		fmt.Printf("[Skip] %s is already the latest version matching criteria.\n", job.Filename)
-		results <- ModResult{Job: job, Status: StatusUpToDate}
+		results <- ModResult{Job: job, Status: StatusUpToDate, Message: "already on latest version"}
 		return
 	}
 
@@ -376,7 +376,11 @@ func printSummaryReport(results []ModResult) {
 	if len(upToDate) > 0 {
 		fmt.Printf("\n[=] ALREADY UP-TO-DATE (%d)\n", len(upToDate))
 		for _, r := range upToDate {
-			fmt.Printf("  • %s\n", r.Job.Filename)
+			if r.Message != "" {
+				fmt.Printf("  • %s (%s)\n", r.Job.Filename, r.Message)
+			} else {
+				fmt.Printf("  • %s (already on latest version)\n", r.Job.Filename)
+			}
 		}
 	}
 

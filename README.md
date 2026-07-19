@@ -109,8 +109,8 @@ Errors / Failed    : 1
   • sodium-0.8.12.jar -> sodium-0.9.1.jar
 
 [=] ALREADY UP-TO-DATE (8)
-  • iris-1.7.0.jar
-  • lithium-0.12.0.jar
+  • iris-1.7.0.jar (already on latest version)
+  • lithium-0.12.0.jar (already on latest version)
 
 [∅] NO UPDATE FOUND ON MODRINTH (2)
   • custom-server-mod-1.0.jar
