@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [0.1.1] - 2026-07-19
 
+### Added
+- **Post-Migration Summary Report (`printSummaryReport`)**: Added detailed post-run summary report aggregating results across all concurrent workers (`chan ModResult`). Clearly displays counts and alphabetical lists of updated mods (showing `old.jar -> new.jar`), already up-to-date mods, mods with no updates found on Modrinth, and failed/error entries.
+
 ### Changed
 - **Project Renaming**: Renamed project, CLI binary, Go module, User-Agent, and documentation from `modmigrator` to `mcjarmig`.
 - **Default Mod Directory Path (`-dir`)**: Updated default value and CLI help representation to the Windows `%APPDATA%/.minecraft/mods` path (`C:\Users\<user>\AppData\Roaming\.minecraft\mods`). Added automatic environment variable expansion (`resolvePath`) for `%APPDATA%`, `%USERPROFILE%`, and `~` prefixes across systems.

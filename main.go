@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -51,6 +52,24 @@ type VersionResponse struct {
 type ModJob struct {
 	FilePath string
 	Filename string
+}
+
+// ResultStatus categorizes the outcome of a processed mod file.
+type ResultStatus int
+
+const (
+	StatusUpdated ResultStatus = iota
+	StatusUpToDate
+	StatusNoUpdate
+	StatusError
+)
+
+// ModResult holds the processing summary for a single mod.
+type ModResult struct {
+	Job         ModJob
+	Status      ResultStatus
+	NewFilename string
+	Message     string
 }
 
 const (
@@ -114,12 +133,13 @@ func main() {
 
 	// 3. Set up Worker Pool using channels and sync.WaitGroup
 	jobs := make(chan ModJob, len(jarFiles))
+	results := make(chan ModResult, len(jarFiles))
 	var wg sync.WaitGroup
 
 	// Launch worker goroutines
 	for i := 1; i <= cfg.Workers; i++ {
 		wg.Add(1)
-		go worker(i, jobs, &wg, cfg, httpClient)
+		go worker(i, jobs, results, &wg, cfg, httpClient)
 	}
 
 	// Enqueue jobs
@@ -128,9 +148,20 @@ func main() {
 	}
 	close(jobs)
 
-	// Wait for all workers to complete
-	wg.Wait()
-	fmt.Println("\nMigration process completed.")
+	// Wait for all workers in a separate goroutine and close results channel when done
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// Collect and aggregate results
+	var allResults []ModResult
+	for res := range results {
+		allResults = append(allResults, res)
+	}
+
+	// Print comprehensive summary report
+	printSummaryReport(allResults)
 }
 
 // parseFlags sets up and parses standard CLI flags.
@@ -210,53 +241,63 @@ func scanModsDir(dir string) ([]ModJob, error) {
 }
 
 // worker processes mod jobs from the jobs channel until the channel is closed.
-func worker(id int, jobs <-chan ModJob, wg *sync.WaitGroup, cfg *Config, client *http.Client) {
+func worker(id int, jobs <-chan ModJob, results chan<- ModResult, wg *sync.WaitGroup, cfg *Config, client *http.Client) {
 	defer wg.Done()
 
 	for job := range jobs {
-		processMod(job, cfg, client)
+		processMod(job, results, cfg, client)
 	}
 }
 
 // processMod handles the full workflow for a single mod: hashing, querying Modrinth API,
 // downloading the updated jar, and moving the old jar into old_mods/.
-func processMod(job ModJob, cfg *Config, client *http.Client) {
+func processMod(job ModJob, results chan<- ModResult, cfg *Config, client *http.Client) {
 	// 1. Calculate SHA-1 hash in chunks
 	hash, err := calculateSHA1(job.FilePath)
 	if err != nil {
-		fmt.Printf("[Error] Failed to calculate SHA-1 for %s: %v\n", job.Filename, err)
+		msg := fmt.Sprintf("Failed to calculate SHA-1: %v", err)
+		fmt.Printf("[Error] %s: %s\n", job.Filename, msg)
+		results <- ModResult{Job: job, Status: StatusError, Message: msg}
 		return
 	}
 
 	// 2. Query Modrinth API for updated version
 	updateResp, status, err := queryModrinthUpdate(client, hash, cfg.Version, cfg.Loader)
 	if err != nil {
-		fmt.Printf("[Error] API request failed for %s (hash: %s): %v\n", job.Filename, hash, err)
+		msg := fmt.Sprintf("API request failed (hash: %s): %v", hash, err)
+		fmt.Printf("[Error] %s: %s\n", job.Filename, msg)
+		results <- ModResult{Job: job, Status: StatusError, Message: msg}
 		return
 	}
 
 	// Handle 404 No update found
 	if status == http.StatusNotFound {
 		fmt.Printf("[Skip] No update found for %s\n", job.Filename)
+		results <- ModResult{Job: job, Status: StatusNoUpdate}
 		return
 	}
 
 	// Handle unexpected HTTP status codes
 	if status != http.StatusOK {
-		fmt.Printf("[Error] Unexpected API status %d for %s\n", status, job.Filename)
+		msg := fmt.Sprintf("Unexpected API status %d", status)
+		fmt.Printf("[Error] %s: %s\n", job.Filename, msg)
+		results <- ModResult{Job: job, Status: StatusError, Message: msg}
 		return
 	}
 
 	// Validate response has downloadable files
 	if updateResp == nil || len(updateResp.Files) == 0 {
 		fmt.Printf("[Skip] No downloadable files in update response for %s\n", job.Filename)
+		results <- ModResult{Job: job, Status: StatusNoUpdate, Message: "No downloadable files in update response"}
 		return
 	}
 
 	// Pick the primary file or default to the first file in the array
 	targetFile := selectTargetFile(updateResp.Files)
 	if targetFile.URL == "" || targetFile.Filename == "" {
-		fmt.Printf("[Error] Invalid file metadata received for %s\n", job.Filename)
+		msg := "Invalid file metadata received for mod"
+		fmt.Printf("[Error] %s: %s\n", job.Filename, msg)
+		results <- ModResult{Job: job, Status: StatusError, Message: msg}
 		return
 	}
 
@@ -265,6 +306,7 @@ func processMod(job ModJob, cfg *Config, client *http.Client) {
 	// we avoid moving it onto itself.
 	if targetFile.Filename == job.Filename {
 		fmt.Printf("[Skip] %s is already the latest version matching criteria.\n", job.Filename)
+		results <- ModResult{Job: job, Status: StatusUpToDate}
 		return
 	}
 
@@ -274,11 +316,87 @@ func processMod(job ModJob, cfg *Config, client *http.Client) {
 
 	// Perform download using temporary buffer or temp file to avoid partial writes locking destination
 	if err := downloadAndReplace(client, targetFile.URL, job.FilePath, newFilePath, oldDestPath); err != nil {
-		fmt.Printf("[Error] Failed during download/update of %s: %v\n", job.Filename, err)
+		msg := fmt.Sprintf("Failed during download/update: %v", err)
+		fmt.Printf("[Error] %s: %s\n", job.Filename, msg)
+		results <- ModResult{Job: job, Status: StatusError, Message: msg}
 		return
 	}
 
 	fmt.Printf("[Success] Updated %s -> %s\n", job.Filename, targetFile.Filename)
+	results <- ModResult{Job: job, Status: StatusUpdated, NewFilename: targetFile.Filename}
+}
+
+// printSummaryReport formats and displays the categorized results of the migration process.
+func printSummaryReport(results []ModResult) {
+	var updated, upToDate, noUpdate, errors []ModResult
+
+	for _, r := range results {
+		switch r.Status {
+		case StatusUpdated:
+			updated = append(updated, r)
+		case StatusUpToDate:
+			upToDate = append(upToDate, r)
+		case StatusNoUpdate:
+			noUpdate = append(noUpdate, r)
+		case StatusError:
+			errors = append(errors, r)
+		}
+	}
+
+	// Sort slices alphabetically by original filename for clean presentation
+	sortByName := func(slice []ModResult) {
+		sort.Slice(slice, func(i, j int) bool {
+			return strings.ToLower(slice[i].Job.Filename) < strings.ToLower(slice[j].Job.Filename)
+		})
+	}
+	sortByName(updated)
+	sortByName(upToDate)
+	sortByName(noUpdate)
+	sortByName(errors)
+
+	fmt.Println("\n================================================================================")
+	fmt.Println("                           MIGRATION SUMMARY REPORT                             ")
+	fmt.Println("================================================================================")
+	fmt.Printf("Total Mods Scanned : %d\n", len(results))
+	fmt.Printf("Updated            : %d\n", len(updated))
+	fmt.Printf("Already Up-to-Date : %d\n", len(upToDate))
+	fmt.Printf("No Update Found    : %d\n", len(noUpdate))
+	fmt.Printf("Errors / Failed    : %d\n", len(errors))
+	fmt.Println("--------------------------------------------------------------------------------")
+
+	if len(updated) > 0 {
+		fmt.Printf("\n[✔] UPDATED (%d)\n", len(updated))
+		for _, r := range updated {
+			fmt.Printf("  • %s -> %s\n", r.Job.Filename, r.NewFilename)
+		}
+	}
+
+	if len(upToDate) > 0 {
+		fmt.Printf("\n[=] ALREADY UP-TO-DATE (%d)\n", len(upToDate))
+		for _, r := range upToDate {
+			fmt.Printf("  • %s\n", r.Job.Filename)
+		}
+	}
+
+	if len(noUpdate) > 0 {
+		fmt.Printf("\n[∅] NO UPDATE FOUND ON MODRINTH (%d)\n", len(noUpdate))
+		for _, r := range noUpdate {
+			if r.Message != "" && r.Message != "No downloadable files in update response" {
+				fmt.Printf("  • %s (%s)\n", r.Job.Filename, r.Message)
+			} else {
+				fmt.Printf("  • %s\n", r.Job.Filename)
+			}
+		}
+	}
+
+	if len(errors) > 0 {
+		fmt.Printf("\n[✖] ERRORS / FAILED (%d)\n", len(errors))
+		for _, r := range errors {
+			fmt.Printf("  • %s: %s\n", r.Job.Filename, r.Message)
+		}
+	}
+
+	fmt.Println("\n================================================================================")
 }
 
 // calculateSHA1 streams the file in chunks via io.Copy to compute the SHA-1 checksum without
