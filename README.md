@@ -16,6 +16,7 @@ Whether you are upgrading an entire modpack to a new Minecraft update or just en
   - Automatically creates an `old_mods/` backup directory inside your mods folder and safely archives old `.jar` files before replacing them.
   - Uses atomic file locking (`sync.Mutex`) across workers to eliminate race conditions, corrupted downloads, or file write collisions.
   - Includes cross-filesystem copy/rename fallbacks to handle across-device boundaries.
+- **Detailed Summary Reporting**: Generates a comprehensive post-run report categorizing every mod into Updated, Up-to-Date, No Update Found, and Errors with clean alphabetical formatting.
 
 ---
 
@@ -64,6 +65,19 @@ mcjarmig comes with sensible defaults right out of the box. Simply running `./mc
 | `-workers` | `5` | Number of concurrent workers for API querying and downloading. |
 | `-token` | `""` (or `MODRINTH_TOKEN`) | Optional Modrinth API token (`Authorization` header) for private mods or higher rate limits. |
 
+### Modrinth API & Authentication
+
+- **No API Key Required by Default**: Modrinth's version check endpoint (`POST https://api.modrinth.com/v2/version_file/{hash}/update`) is completely public. `mcjarmig` works out of the box without any signup, configuration files, or tokens for public mods.
+- **Optional Token Authentication**: If you need to access private mod projects, drafts, or want to increase your Modrinth API rate limit, you can provide a personal access token using the `-token` CLI flag or by exporting the `MODRINTH_TOKEN` environment variable:
+  ```bash
+  # Via environment variable
+  export MODRINTH_TOKEN="mry_your_token_here"
+  ./mcjarmig
+
+  # Via CLI flag
+  ./mcjarmig -token mry_your_token_here
+  ```
+
 ---
 
 ## How It Works
@@ -74,3 +88,40 @@ mcjarmig comes with sensible defaults right out of the box. Simply running `./mc
 4. **Download & Archive**: If an update is found, the new `.jar` file is downloaded to a temporary buffer, the old `.jar` file is moved into the `old_mods/` folder, and the new file is moved into place. All disk modifications are mutex-guaranteed for thread safety.
 
 ---
+
+## Summary Report Output
+
+After all concurrent workers finish checking and updating your mods, `mcjarmig` outputs an organized summary report:
+
+```text
+================================================================================
+                           MIGRATION SUMMARY REPORT                             
+================================================================================
+Total Mods Scanned : 15
+Updated            : 4
+Already Up-to-Date : 8
+No Update Found    : 2
+Errors / Failed    : 1
+--------------------------------------------------------------------------------
+
+[✔] UPDATED (4)
+  • fabric-api-0.92.0.jar -> fabric-api-0.95.0.jar
+  • sodium-0.8.12.jar -> sodium-0.9.1.jar
+
+[=] ALREADY UP-TO-DATE (8)
+  • iris-1.7.0.jar
+  • lithium-0.12.0.jar
+
+[∅] NO UPDATE FOUND ON MODRINTH (2)
+  • custom-server-mod-1.0.jar
+
+[✖] ERRORS / FAILED (1)
+  • broken-mod.jar: API request failed (timeout)
+================================================================================
+```
+
+---
+
+## License
+
+This project is open-source and available under the MIT License.

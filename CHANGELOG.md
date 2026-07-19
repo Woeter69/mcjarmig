@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - **Optional Modrinth Authentication (`-token`)**: Added optional `-token` CLI flag and `MODRINTH_TOKEN` environment variable support. Automatically sets `Authorization` header on API queries and download requests when accessing private mod projects or avoiding rate limits.
 
 ### Changed
+- **Documentation (`README.md`)**: Updated README with dedicated sections for Modrinth API Authentication (`-token` flag and `MODRINTH_TOKEN` env var) and the Post-Migration Summary Report formatting/breakdown.
 - **Project Renaming**: Renamed project, CLI binary, Go module, User-Agent, and documentation from `modmigrator` to `mcjarmig`.
 - **Default Mod Directory Path (`-dir`)**: Updated default value and CLI help representation to the Windows `%APPDATA%/.minecraft/mods` path (`C:\Users\<user>\AppData\Roaming\.minecraft\mods`). Added automatic environment variable expansion (`resolvePath`) for `%APPDATA%`, `%USERPROFILE%`, and `~` prefixes across systems.
 
