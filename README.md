@@ -1,6 +1,6 @@
 # mcjarmig
 
-mcjarmig is a high-performance, concurrent CLI tool written in Go that automatically updates Minecraft mods (`.jar` files) from an older version to the newest version available on the **Modrinth v2 API**.
+mcjarmig automatically updates Minecraft mods (`.jar` files) from an older version to the newest version available using the **Modrinth v2 API**.
 
 Whether you are upgrading an entire modpack to a new Minecraft update or just ensuring all your installed mods are on their latest release, mcjarmig handles file discovery, SHA-1 checksum identification, API querying, downloading, and backup migration seamlessly.
 
