@@ -62,6 +62,7 @@ mcjarmig comes with sensible defaults right out of the box. Simply running `./mc
 | `-loader` | `fabric` | Target mod loader (`fabric`, `forge`, `neoforge`, `quilt`). |
 | `-version` | `latest` | Target Minecraft game version (`1.21.1`, `1.20.4`, or `latest` for any version). |
 | `-workers` | `5` | Number of concurrent workers for API querying and downloading. |
+| `-token` | `""` (or `MODRINTH_TOKEN`) | Optional Modrinth API token (`Authorization` header) for private mods or higher rate limits. |
 
 ---
 

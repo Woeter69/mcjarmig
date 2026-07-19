@@ -28,6 +28,7 @@ type Config struct {
 	Loader     string
 	Workers    int
 	OldModsDir string
+	Token      string
 }
 
 // UpdateRequest represents the JSON body sent to Modrinth's version_file update endpoint.
@@ -172,6 +173,7 @@ func parseFlags() *Config {
 	flag.StringVar(&cfg.Version, "version", "latest", "Target Minecraft version to migrate to (e.g., '1.21.1' or 'latest')")
 	flag.StringVar(&cfg.Loader, "loader", "fabric", "Target mod loader (e.g., 'fabric', 'forge', 'neoforge')")
 	flag.IntVar(&cfg.Workers, "workers", 5, "Number of concurrent workers for API querying and downloading")
+	flag.StringVar(&cfg.Token, "token", os.Getenv("MODRINTH_TOKEN"), "Optional Modrinth API token for private mods or higher rate limits (env: MODRINTH_TOKEN)")
 	flag.Parse()
 	cfg.ModsDir = resolvePath(cfg.ModsDir)
 	return cfg
@@ -262,7 +264,7 @@ func processMod(job ModJob, results chan<- ModResult, cfg *Config, client *http.
 	}
 
 	// 2. Query Modrinth API for updated version
-	updateResp, status, err := queryModrinthUpdate(client, hash, cfg.Version, cfg.Loader)
+	updateResp, status, err := queryModrinthUpdate(client, hash, cfg)
 	if err != nil {
 		msg := fmt.Sprintf("API request failed (hash: %s): %v", hash, err)
 		fmt.Printf("[Error] %s: %s\n", job.Filename, msg)
@@ -315,7 +317,7 @@ func processMod(job ModJob, results chan<- ModResult, cfg *Config, client *http.
 	oldDestPath := filepath.Join(cfg.OldModsDir, job.Filename)
 
 	// Perform download using temporary buffer or temp file to avoid partial writes locking destination
-	if err := downloadAndReplace(client, targetFile.URL, job.FilePath, newFilePath, oldDestPath); err != nil {
+	if err := downloadAndReplace(client, targetFile.URL, job.FilePath, newFilePath, oldDestPath, cfg); err != nil {
 		msg := fmt.Sprintf("Failed during download/update: %v", err)
 		fmt.Printf("[Error] %s: %s\n", job.Filename, msg)
 		results <- ModResult{Job: job, Status: StatusError, Message: msg}
@@ -417,14 +419,14 @@ func calculateSHA1(filePath string) (string, error) {
 }
 
 // queryModrinthUpdate sends a POST request to Modrinth API's update endpoint with the target loaders and versions.
-func queryModrinthUpdate(client *http.Client, hash, version, loader string) (*VersionResponse, int, error) {
+func queryModrinthUpdate(client *http.Client, hash string, cfg *Config) (*VersionResponse, int, error) {
 	url := fmt.Sprintf(modrinthUpdateAPI, hash)
 
 	reqBody := UpdateRequest{
-		Loaders: []string{loader},
+		Loaders: []string{cfg.Loader},
 	}
-	if version != "" && strings.ToLower(version) != "latest" {
-		reqBody.GameVersions = []string{version}
+	if cfg.Version != "" && strings.ToLower(cfg.Version) != "latest" {
+		reqBody.GameVersions = []string{cfg.Version}
 	}
 
 	bodyBytes, err := json.Marshal(reqBody)
@@ -439,6 +441,9 @@ func queryModrinthUpdate(client *http.Client, hash, version, loader string) (*Ve
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", userAgent)
+	if cfg != nil && cfg.Token != "" {
+		req.Header.Set("Authorization", cfg.Token)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -475,13 +480,16 @@ func selectTargetFile(files []ModrinthFile) ModrinthFile {
 
 // downloadAndReplace downloads the file from downloadURL to newFilePath and moves oldFilePath to oldDestPath.
 // Thread safety is ensured via fileOpsMutex so concurrent workers do not collide on disk operations.
-func downloadAndReplace(client *http.Client, downloadURL, oldFilePath, newFilePath, oldDestPath string) error {
+func downloadAndReplace(client *http.Client, downloadURL, oldFilePath, newFilePath, oldDestPath string, cfg *Config) error {
 	// First, download the file into a temporary file or memory to verify successful network download
 	req, err := http.NewRequest(http.MethodGet, downloadURL, nil)
 	if err != nil {
 		return fmt.Errorf("creating download request failed: %w", err)
 	}
 	req.Header.Set("User-Agent", userAgent)
+	if cfg != nil && cfg.Token != "" {
+		req.Header.Set("Authorization", cfg.Token)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {

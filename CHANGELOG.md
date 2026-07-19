@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - **Post-Migration Summary Report (`printSummaryReport`)**: Added detailed post-run summary report aggregating results across all concurrent workers (`chan ModResult`). Clearly displays counts and alphabetical lists of updated mods (showing `old.jar -> new.jar`), already up-to-date mods, mods with no updates found on Modrinth, and failed/error entries.
+- **Optional Modrinth Authentication (`-token`)**: Added optional `-token` CLI flag and `MODRINTH_TOKEN` environment variable support. Automatically sets `Authorization` header on API queries and download requests when accessing private mod projects or avoiding rate limits.
 
 ### Changed
 - **Project Renaming**: Renamed project, CLI binary, Go module, User-Agent, and documentation from `modmigrator` to `mcjarmig`.
