@@ -74,7 +74,3 @@ mcjarmig comes with sensible defaults right out of the box. Simply running `./mc
 4. **Download & Archive**: If an update is found, the new `.jar` file is downloaded to a temporary buffer, the old `.jar` file is moved into the `old_mods/` folder, and the new file is moved into place. All disk modifications are mutex-guaranteed for thread safety.
 
 ---
-
-## License
-
-This project is open-source and available under the MIT License.
