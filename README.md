@@ -58,7 +58,7 @@ mcjarmig comes with sensible defaults right out of the box. Simply running `./mc
 
 | Flag | Default | Description |
 | :--- | :--- | :--- |
-| `-dir` | OS-specific `.minecraft/mods` | Path to the target Minecraft mods folder. |
+| `-dir` | `%APPDATA%/.minecraft/mods` | Path to the target Minecraft mods folder (Windows `%APPDATA%/.minecraft/mods` by default). |
 | `-loader` | `fabric` | Target mod loader (`fabric`, `forge`, `neoforge`, `quilt`). |
 | `-version` | `latest` | Target Minecraft game version (`1.21.1`, `1.20.4`, or `latest` for any version). |
 | `-workers` | `5` | Number of concurrent workers for API querying and downloading. |

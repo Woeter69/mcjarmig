@@ -142,29 +142,48 @@ func parseFlags() *Config {
 	flag.StringVar(&cfg.Loader, "loader", "fabric", "Target mod loader (e.g., 'fabric', 'forge', 'neoforge')")
 	flag.IntVar(&cfg.Workers, "workers", 5, "Number of concurrent workers for API querying and downloading")
 	flag.Parse()
+	cfg.ModsDir = resolvePath(cfg.ModsDir)
 	return cfg
 }
 
-// defaultModsDir determines the default Minecraft mods path across operating systems:
-// Windows: %APPDATA%/.minecraft/mods
-// macOS:   ~/Library/Application Support/minecraft/mods
-// Linux:   ~/.minecraft/mods
-// Falls back to "./mods" if user home/appdata directories cannot be resolved.
+// defaultModsDir determines the default Minecraft mods path, prioritizing the Windows APPDATA path:
+// Windows: %APPDATA%/.minecraft/mods (e.g. C:\Users\<USER>\AppData\Roaming\.minecraft\mods)
+// If APPDATA is set in the environment, it returns the expanded AppData/.minecraft/mods path.
+// Otherwise (if not on Windows or APPDATA is unset), it returns "%APPDATA%/.minecraft/mods" as the universal default string.
 func defaultModsDir() string {
 	if appData := os.Getenv("APPDATA"); appData != "" {
 		return filepath.Join(appData, ".minecraft", "mods")
 	}
-
-	homeDir, err := os.UserHomeDir()
-	if err != nil || homeDir == "" {
-		return "./mods"
+	if userProfile := os.Getenv("USERPROFILE"); userProfile != "" && runtime.GOOS == "windows" {
+		return filepath.Join(userProfile, "AppData", "Roaming", ".minecraft", "mods")
 	}
+	return "%APPDATA%/.minecraft/mods"
+}
 
-	if runtime.GOOS == "darwin" {
-		return filepath.Join(homeDir, "Library", "Application Support", "minecraft", "mods")
+// resolvePath expands %APPDATA%, %USERPROFILE%, and ~ prefixes into absolute system paths if present.
+func resolvePath(path string) string {
+	if strings.HasPrefix(path, "%APPDATA%") || strings.HasPrefix(path, "$APPDATA") {
+		trimmed := strings.TrimPrefix(strings.TrimPrefix(path, "%APPDATA%"), "$APPDATA")
+		trimmed = strings.TrimPrefix(trimmed, "/")
+		trimmed = strings.TrimPrefix(trimmed, "\\")
+		if appData := os.Getenv("APPDATA"); appData != "" {
+			return filepath.Join(appData, trimmed)
+		} else if userProfile := os.Getenv("USERPROFILE"); userProfile != "" {
+			return filepath.Join(userProfile, "AppData", "Roaming", trimmed)
+		} else if home, err := os.UserHomeDir(); err == nil && home != "" {
+			// Fallback resolution on Linux/macOS when %APPDATA% path is passed or defaulted
+			return filepath.Join(home, trimmed)
+		}
 	}
-
-	return filepath.Join(homeDir, ".minecraft", "mods")
+	if strings.HasPrefix(path, "~") {
+		trimmed := strings.TrimPrefix(path, "~")
+		trimmed = strings.TrimPrefix(trimmed, "/")
+		trimmed = strings.TrimPrefix(trimmed, "\\")
+		if home, err := os.UserHomeDir(); err == nil && home != "" {
+			return filepath.Join(home, trimmed)
+		}
+	}
+	return os.ExpandEnv(path)
 }
 
 // scanModsDir finds all .jar files in the specified directory (non-recursive, ignoring subdirectories like old_mods).

@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - **Project Renaming**: Renamed project, CLI binary, Go module, User-Agent, and documentation from `modmigrator` to `mcjarmig`.
+- **Default Mod Directory Path (`-dir`)**: Updated default value and CLI help representation to the Windows `%APPDATA%/.minecraft/mods` path (`C:\Users\<user>\AppData\Roaming\.minecraft\mods`). Added automatic environment variable expansion (`resolvePath`) for `%APPDATA%`, `%USERPROFILE%`, and `~` prefixes across systems.
 
 ## [0.1.0] - 2026-07-19
 
