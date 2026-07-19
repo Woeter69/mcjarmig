@@ -1,8 +1,8 @@
-# ModMigrator
+# mcjarmig
 
-ModMigrator is a high-performance, concurrent CLI tool written in Go that automatically updates Minecraft mods (`.jar` files) from an older version to the newest version available on the **Modrinth v2 API**.
+mcjarmig is a high-performance, concurrent CLI tool written in Go that automatically updates Minecraft mods (`.jar` files) from an older version to the newest version available on the **Modrinth v2 API**.
 
-Whether you are upgrading an entire modpack to a new Minecraft update or just ensuring all your installed mods are on their latest release, ModMigrator handles file discovery, SHA-1 checksum identification, API querying, downloading, and backup migration seamlessly.
+Whether you are upgrading an entire modpack to a new Minecraft update or just ensuring all your installed mods are on their latest release, mcjarmig handles file discovery, SHA-1 checksum identification, API querying, downloading, and backup migration seamlessly.
 
 ---
 
@@ -29,29 +29,29 @@ Whether you are upgrading an entire modpack to a new Minecraft update or just en
 Clone the repository and build using the Go CLI:
 
 ```bash
-git clone https://github.com/Woeter/modmigrator.git
-cd modmigrator
-go build -o modmigrator main.go
+git clone https://github.com/Woeter/mcjarmig.git
+cd mcjarmig
+go build -o mcjarmig main.go
 ```
 
 ---
 
 ## Usage
 
-ModMigrator comes with sensible defaults right out of the box. Simply running `./modmigrator` will scan your system's default Minecraft mods folder and update all mods to their latest available Fabric releases.
+mcjarmig comes with sensible defaults right out of the box. Simply running `./mcjarmig` will scan your system's default Minecraft mods folder and update all mods to their latest available Fabric releases.
 
 ```bash
 # Update all mods in the default Minecraft folder to the latest available Fabric versions
-./modmigrator
+./mcjarmig
 
 # Update mods to a specific Minecraft game version (e.g., 1.21.1)
-./modmigrator -version 1.21.1
+./mcjarmig -version 1.21.1
 
 # Update mods for Forge or NeoForge
-./modmigrator -loader neoforge -version 1.21.1
+./mcjarmig -loader neoforge -version 1.21.1
 
 # Specify a custom mods directory and use 10 concurrent download workers
-./modmigrator -dir /path/to/custom/mods -loader fabric -version latest -workers 10
+./mcjarmig -dir /path/to/custom/mods -loader fabric -version latest -workers 10
 ```
 
 ### CLI Flags
@@ -67,7 +67,7 @@ ModMigrator comes with sensible defaults right out of the box. Simply running `.
 
 ## How It Works
 
-1. **Scan**: ModMigrator scans the directory specified by `-dir` (ignoring subdirectories like `old_mods/`) for valid `.jar` files.
+1. **Scan**: mcjarmig scans the directory specified by `-dir` (ignoring subdirectories like `old_mods/`) for valid `.jar` files.
 2. **Hash**: Each `.jar` file is streamed and hashed using `SHA-1`, which Modrinth uses to uniquely identify mod files.
 3. **Query**: Each hash is queried against the Modrinth API (`POST /v2/version_file/{hash}/update`). If `-version` is set to `latest`, game version filtering is bypassed to return the absolute newest release for your loader.
 4. **Download & Archive**: If an update is found, the new `.jar` file is downloaded to a temporary buffer, the old `.jar` file is moved into the `old_mods/` folder, and the new file is moved into place. All disk modifications are mutex-guaranteed for thread safety.

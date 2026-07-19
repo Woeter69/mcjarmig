@@ -1,4 +1,4 @@
-// Package main implements ModMigrator, a concurrent CLI tool that automatically
+// Package main implements mcjarmig, a concurrent CLI tool that automatically
 // updates Minecraft mods (.jar files) from an older game version to a newer game
 // version using the Modrinth v2 API.
 package main
@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-// Config holds the command-line flags and runtime configuration for ModMigrator.
+// Config holds the command-line flags and runtime configuration for mcjarmig.
 type Config struct {
 	ModsDir    string
 	Version    string
@@ -57,7 +57,7 @@ const (
 	// modrinthUpdateAPI is the base URL template for the Modrinth version_file update endpoint.
 	modrinthUpdateAPI = "https://api.modrinth.com/v2/version_file/%s/update"
 	// userAgent is required by Modrinth API guidelines to identify our client.
-	userAgent = "ModMigrator/1.0 (CLI Tool)"
+	userAgent = "mcjarmig/1.0 (CLI Tool)"
 )
 
 // fileOpsMutex ensures thread-safe file writing and moving operations across concurrent workers.
@@ -72,7 +72,7 @@ func main() {
 	if cfg.Loader == "" {
 		fmt.Println("Error: -loader flag cannot be empty.")
 		fmt.Println("\nUsage example:")
-		fmt.Println("  modmigrator -dir ./mods -version latest -loader fabric -workers 5")
+		fmt.Println("  mcjarmig -dir ./mods -version latest -loader fabric -workers 5")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
@@ -99,7 +99,7 @@ func main() {
 		return
 	}
 
-	fmt.Printf("Starting ModMigrator...\n")
+	fmt.Printf("Starting mcjarmig...\n")
 	targetVerDisplay := cfg.Version
 	if strings.ToLower(cfg.Version) == "latest" || cfg.Version == "" {
 		targetVerDisplay = "latest available (any game version)"

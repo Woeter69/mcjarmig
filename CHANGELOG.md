@@ -2,10 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 2026-07-19
+
+### Changed
+- **Project Renaming**: Renamed project, CLI binary, Go module, User-Agent, and documentation from `modmigrator` to `mcjarmig`.
+
 ## [0.1.0] - 2026-07-19
 
 ### Added
-- **Project Initialization**: Initialized Go module `modmigrator` (`go.mod`) with Go 1.26 compatibility.
+- **Project Initialization**: Initialized Go module `mcjarmig` (`go.mod`) with Go 1.26 compatibility.
 - **Documentation (`README.md`)**: Added comprehensive project README detailing features, cross-platform paths, CLI flags, usage examples, and architecture.
 - **Core CLI Architecture (`main.go`)**:
   - Implemented command-line flag parsing (`-dir`, `-version`, `-loader`, `-workers`) using standard `flag` package.
